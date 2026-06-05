@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Katı Cisimler · 3D Açılım, Alan ve Hacim</title>
+<style>
+:root{
+  --bg:#0e1424;--panel:#161f37;--panel2:#1d2a44;--line:#2a3756;
+  --txt:#e8eefc;--muted:#9fb0d0;--accent:#4ea1ff;--accent2:#36d399;
+  --warn:#ffd166;--danger:#ff7b9c;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;font-family:"Segoe UI",system-ui,Arial,sans-serif;
+  background:var(--bg);color:var(--txt);overflow:hidden}
+#app{display:flex;height:100vh;width:100vw}
+
+/* ---- Sidebar ---- */
+#side{width:370px;min-width:370px;height:100%;background:var(--panel);
+  border-right:1px solid var(--line);display:flex;flex-direction:column;overflow-y:auto}
+#side h1{font-size:18px;margin:0;padding:16px 18px 4px}
+#side .sub{font-size:12px;color:var(--muted);padding:0 18px 12px;line-height:1.5}
+.group{padding:12px 18px;border-top:1px solid var(--line)}
+.group .label{font-size:11px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--muted);margin-bottom:9px}
+.shapes{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.shape-btn{background:var(--panel2);border:1px solid var(--line);border-radius:10px;
+  color:var(--txt);padding:8px 4px;font-size:11px;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;gap:5px;transition:.15s}
+.shape-btn svg{width:26px;height:26px}
+.shape-btn:hover{border-color:var(--accent)}
+.shape-btn.active{background:linear-gradient(180deg,#274273,#1b2c4d);
+  border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+.ctrl{display:flex;align-items:center;justify-content:space-between;margin:8px 0}
+.ctrl label{font-size:13px;color:var(--muted)}
+.ctrl input[type=number]{width:88px;background:var(--bg);border:1px solid var(--line);
+  color:var(--txt);border-radius:8px;padding:6px 9px;font-size:14px;text-align:right}
+.slider-wrap{margin-top:6px}
+.slider-wrap input[type=range]{width:100%}
+.row{display:flex;gap:8px;margin-top:8px}
+button.act{flex:1;background:var(--accent);color:#05122a;border:none;
+  border-radius:9px;padding:9px;font-weight:600;cursor:pointer;font-size:13px}
+button.act.alt{background:var(--panel2);color:var(--txt);border:1px solid var(--line)}
+button.act.tog{background:var(--panel2);color:var(--accent);border:1px solid var(--accent)}
+button.act.tog.on{background:rgba(78,161,255,.18)}
+button.act:hover{filter:brightness(1.12)}
+
+/* ---- Result cards ---- */
+.res-card{background:var(--panel2);border:1px solid var(--line);border-radius:10px;
+  padding:10px 12px;margin-bottom:8px}
+.res-card .name{font-size:12px;color:var(--muted);
+  display:flex;justify-content:space-between;align-items:center}
+.res-card .formula{font-family:"Cambria Math",Georgia,serif;
+  font-size:13px;color:var(--warn);margin:3px 0 1px}
+.res-card .val{font-size:20px;font-weight:700}
+.res-card .val small{font-size:12px;color:var(--muted);font-weight:400}
+
+/* ---- Çözüm paneli ---- */
+#sol-panel{background:var(--panel2);border:1px solid var(--line);
+  border-radius:10px;padding:10px 12px;margin-top:0;display:none}
+#sol-panel.open{display:block}
+.step{display:flex;gap:9px;margin:7px 0;font-size:13px;align-items:flex-start}
+.step-num{min-width:22px;height:22px;border-radius:50%;background:var(--accent);
+  color:#05122a;font-weight:700;font-size:11px;display:flex;
+  align-items:center;justify-content:center;margin-top:1px}
+.step-body .s-label{color:var(--muted);font-size:11px}
+.step-body .s-expr{font-family:"Cambria Math",Georgia,serif;
+  color:var(--warn);font-size:13px}
+.step-body .s-val{font-weight:700;color:var(--accent2)}
+
+/* ---- Legend ---- */
+.legend{display:flex;flex-wrap:wrap;gap:8px;font-size:11px;
+  color:var(--muted);padding:0 18px 14px}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.dot{width:11px;height:11px;border-radius:3px;display:inline-block}
+
+/* ---- Stage ---- */
+#stage{flex:1;position:relative}
+#c{display:block;width:100%;height:100%}
+#hint{position:absolute;left:16px;bottom:14px;font-size:12px;
+  color:var(--muted);background:rgba(10,16,30,.6);
+  padding:7px 11px;border-radius:8px;backdrop-filter:blur(4px)}
+#state-badge{position:absolute;right:16px;top:14px;font-size:12px;
+  background:rgba(10,16,30,.6);padding:7px 12px;border-radius:20px;
+  border:1px solid var(--line);backdrop-filter:blur(4px)}
+#title-over{position:absolute;left:16px;top:14px;font-size:15px;font-weight:600;
+  background:rgba(10,16,30,.55);padding:7px 13px;border-radius:9px;backdrop-filter:blur(4px)}
+
+/* ---- 3D Etiketler (CSS2D) ---- */
+.lbl3d{background:rgba(10,16,40,.78);color:#ffd166;font-size:11px;
+  padding:2px 7px;border-radius:12px;border:1px solid #ffd16655;
+  pointer-events:none;white-space:nowrap;font-family:"Segoe UI",sans-serif;font-weight:600}
+.lbl3d.ang{color:#36d399;border-color:#36d39955}
+
+::-webkit-scrollbar{width:8px}
+::-webkit-scrollbar-thumb{background:#2c3a5c;border-radius:5px}
+</style>
+</head>
+<body>
+<div id="app">
+<aside id="side">
+  <h1>📦 Katı Cisimler — 3D</h1>
+  <div class="sub">Cisim seç, ölçü gir, <b>açılımı</b> izle. Etiketler ve adım adım çözüm.</div>
+
+  <div class="group">
+    <div class="label">Cisim Seç</div>
+    <div class="shapes" id="shapes"></div>
+  </div>
+
+  <div class="group">
+    <div class="label">Ölçüler</div>
+    <div id="dims"></div>
+  </div>
+
+  <div class="group">
+    <div class="label">Açılım (Net) Animasyonu</div>
+    <div class="slider-wrap">
+      <input type="range" id="fold" min="0" max="1" step="0.001" value="1"/>
+    </div>
+    <div class="ctrl" style="margin-top:4px">
+      <span style="font-size:11px;color:var(--muted)">◀ Açık (net)</span>
+      <span style="font-size:11px;color:var(--muted)">Kapalı (cisim) ▶</span>
+    </div>
+    <div class="row">
+      <button class="act" id="play">▶ Aç / Kapa</button>
+      <button class="act alt" id="resetCam">⟲ Görünüm</button>
+    </div>
+    <div class="row" style="margin-top:6px">
+      <button class="act tog" id="toggleLbl" onclick="toggleLabels()">🏷 Etiketler</button>
+    </div>
+  </div>
+
+  <div class="group">
+    <div class="label">Hesaplar</div>
+    <div id="res-cards"></div>
+    <div class="row" style="margin-top:6px">
+      <button class="act alt" id="toggleSol" onclick="toggleSolution()">📐 Adım Adım Çözüm</button>
+    </div>
+    <div id="sol-panel"></div>
+  </div>
+
+  <div class="legend" id="legend"></div>
+</aside>
+
+<main id="stage">
+  <canvas id="c"></canvas>
+  <div id="title-over">—</div>
+  <div id="state-badge">—</div>
+  <div id="hint">🖱️ Döndür: sürükle · Yakınlaş: tekerlek · Kaydır: sağ tık</div>
+</main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/renderers/CSS2DRenderer.js"></script>
+<script>
+/* ============================================================
+   Katı Cisimler: 3D açılım + etiketler + küre/kesik koni +
+   dik üçgen prizma + adım adım çözüm
+   ============================================================ */
+const PI=Math.PI;
+const COLORS={base:0x4ea1ff,side:0x36d399,top:0xffd166,lateral:0xff7b9c,extra:0xb085f5};
+
+/* ---------- THREE kurulum ---------- */
+const canvas=document.getElementById('c');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x0e1424);
+
+const camera=new THREE.PerspectiveCamera(50,1,0.1,1000);
+camera.position.set(7,6,9);
+
+const controls=new THREE.OrbitControls(camera,canvas);
+controls.enableDamping=true; controls.dampingFactor=0.08;
+
+scene.add(new THREE.AmbientLight(0xffffff,0.65));
+const dl=new THREE.DirectionalLight(0xffffff,0.85); dl.position.set(6,12,8); scene.add(dl);
+const dl2=new THREE.DirectionalLight(0x88aaff,0.4); dl2.position.set(-8,4,-6); scene.add(dl2);
+
+const grid=new THREE.GridHelper(40,40,0x2a3756,0x1b2740);
+grid.material.opacity=0.35; grid.material.transparent=true; grid.position.y=-0.001;
+scene.add(grid);
+
+/* ---------- CSS2D renderer (etiketler) ---------- */
+const labelRenderer=new THREE.CSS2DRenderer();
+labelRenderer.setSize(canvas.clientWidth||800,canvas.clientHeight||600);
+labelRenderer.domElement.style.position='absolute';
+labelRenderer.domElement.style.top='0';
+labelRenderer.domElement.style.pointerEvents='none';
+document.getElementById('stage').appendChild(labelRenderer.domElement);
+
+const root=new THREE.Group(); scene.add(root);
+let current=null;
+let labelsVisible=true;
+let solOpen=false;
+
+/* ---------- yardımcı: etiket oluştur ---------- */
+function makeLabel(text,isAngle=false){
+  const div=document.createElement('div');
+  div.className='lbl3d'+(isAngle?' ang':'');
+  div.textContent=text;
+  const obj=new THREE.CSS2DObject(div);
+  obj.userData.isLabel=true;
+  return obj;
+}
+
+function faceMat(color){
+  return new THREE.MeshLambertMaterial({color,transparent:true,opacity:0.55,side:THREE.DoubleSide});
+}
+function planeFace(w,h,color){
+  const g=new THREE.PlaneGeometry(w,h); g.rotateX(-PI/2);
+  const m=new THREE.Mesh(g,faceMat(color));
+  const edges=new THREE.LineSegments(new THREE.EdgesGeometry(g),
+    new THREE.LineBasicMaterial({color:0xffffff,transparent:true,opacity:0.55}));
+  m.add(edges); return m;
+}
+function pivot(x,y,z){const p=new THREE.Group(); p.position.set(x,y,z); return p;}
+function triFace(pts,color){
+  const geo=new THREE.BufferGeometry();
+  const v=[]; pts.forEach(p=>v.push(p[0],0,p[1]));
+  geo.setAttribute('position',new THREE.Float32BufferAttribute(v,3));
+  geo.setIndex([0,1,2]); geo.computeVertexNormals();
+  const m=new THREE.Mesh(geo,faceMat(color));
+  const ev=[]; [0,1,2,0].forEach(i=>ev.push(pts[i%3][0],0,pts[i%3][1]));
+  const eGeo=new THREE.BufferGeometry();
+  eGeo.setAttribute('position',new THREE.Float32BufferAttribute(ev,3));
+  m.add(new THREE.Line(eGeo,new THREE.LineBasicMaterial({color:0xffffff,transparent:true,opacity:0.55})));
+  return m;
+}
+function morphMesh(flat,target,index,color){
+  const geo=new THREE.BufferGeometry();
+  const pos=new Float32Array(flat.length);
+  geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  geo.setIndex(index);
+  const m=new THREE.Mesh(geo,faceMat(color));
+  m.userData={flat,target,geo}; return m;
+}
+function applyMorph(m,t){
+  const{flat,target,geo}=m.userData;
+  const p=geo.attributes.position.array;
+  for(let i=0;i<flat.length;i++) p[i]=flat[i]+(target[i]-flat[i])*t;
+  geo.attributes.position.needsUpdate=true;
+  geo.computeVertexNormals();
+}
+function disk(r,color){
+  const g=new THREE.CircleGeometry(r,64); g.rotateX(-PI/2);
+  const m=new THREE.Mesh(g,faceMat(color));
+  const ring=new THREE.LineLoop(
+    new THREE.EdgesGeometry(new THREE.CircleGeometry(r,64)).rotateX(-PI/2),
+    new THREE.LineBasicMaterial({color:0xffffff,transparent:true,opacity:0.5}));
+  m.add(ring); return m;
+}
+function lerp(a,b,t){return a+(b-a)*t;}
+function fmt(v,d=2){return v.toFixed(d);}
+
+/* ============================================================
+   CİSİM TANIMLARI
+   ============================================================ */
+const SHAPES={
+
+  /* ---- Küp ---- */
+  kup:{
+    name:'Küp',icon:cubeIcon(),
+    dims:[{key:'a',label:'Kenar a',val:3}],
+    legend:[['Taban',COLORS.base],['Yan yüz',COLORS.side],['Üst',COLORS.top]],
+    build:(p)=>boxBuild(p.a,p.a,p.a),
+    calc:(p)=>{const a=p.a; return{
+      taban:{f:'a²',v:a*a},
+      yanal:{f:'4·a²',v:4*a*a},
+      yuzey:{f:'6·a²',v:6*a*a},
+      hacim:{f:'a³',v:a*a*a}};},
+    steps:(p)=>{const a=p.a; return[
+      {lbl:'Taban alanı',expr:`a² = ${fmt(a)}²`,val:`= ${fmt(a*a)} birim²`},
+      {lbl:'Yanal alan (4 yüz)',expr:`4·a² = 4·${fmt(a)}²`,val:`= ${fmt(4*a*a)} birim²`},
+      {lbl:'Toplam yüzey',expr:`6·a² = 6·${fmt(a)}²`,val:`= ${fmt(6*a*a)} birim²`},
+      {lbl:'Hacim',expr:`a³ = ${fmt(a)}³`,val:`= ${fmt(a*a*a)} birim³`}];}
+  },
+
+  /* ---- Dikdörtgen Prizma ---- */
+  prizma:{
+    name:'Dikd. Prizma',icon:boxIcon(),
+    dims:[{key:'a',label:'En a',val:4},{key:'b',label:'Boy b',val:2.5},{key:'c',label:'Yük. c',val:3}],
+    legend:[['Taban',COLORS.base],['Yan yüz',COLORS.side],['Üst',COLORS.top]],
+    build:(p)=>boxBuild(p.a,p.b,p.c),
+    calc:(p)=>{const{a,b,c}=p; return{
+      taban:{f:'a·b',v:a*b},
+      yanal:{f:'2·c·(a+b)',v:2*c*(a+b)},
+      yuzey:{f:'2(ab+bc+ac)',v:2*(a*b+b*c+a*c)},
+      hacim:{f:'a·b·c',v:a*b*c}};},
+    steps:(p)=>{const{a,b,c}=p; return[
+      {lbl:'Taban alanı',expr:`a·b = ${fmt(a)}·${fmt(b)}`,val:`= ${fmt(a*b)} birim²`},
+      {lbl:'Yanal alan',expr:`2c(a+b) = 2·${fmt(c)}·(${fmt(a)}+${fmt(b)})`,val:`= ${fmt(2*c*(a+b))} birim²`},
+      {lbl:'Toplam yüzey',expr:`2(ab+bc+ac)`,val:`= ${fmt(2*(a*b+b*c+a*c))} birim²`},
+      {lbl:'Hacim',expr:`a·b·c = ${fmt(a)}·${fmt(b)}·${fmt(c)}`,val:`= ${fmt(a*b*c)} birim³`}];}
+  },
+
+  /* ---- Üçgen Prizma (eşkenar taban) ---- */
+  ucgenprizma:{
+    name:'Üçgen Prizma',icon:triPrismIcon(),
+    dims:[{key:'a',label:'Taban a',val:4},{key:'h',label:'Üçgen yük. h',val:3},{key:'L',label:'Derinlik L',val:5}],
+    legend:[['Taban (üçgen)',COLORS.base],['Yan yüz',COLORS.side]],
+    build:(p)=>triPrismBuild(p.a,p.h,p.L,false),
+    calc:(p)=>{const{a,h,L}=p; const s=Math.sqrt((a/2)**2+h*h); const tb=a*h/2; return{
+      taban:{f:'(a·h)/2',v:tb},
+      yanal:{f:'(a+2s)·L',v:(a+2*s)*L,note:`s=${fmt(s)}`},
+      yuzey:{f:'2·taban + yanal',v:2*tb+(a+2*s)*L},
+      hacim:{f:'taban·L',v:tb*L}};},
+    steps:(p)=>{const{a,h,L}=p; const s=Math.sqrt((a/2)**2+h*h); const tb=a*h/2; return[
+      {lbl:'Eğik kenar s',expr:`√((a/2)²+h²) = √(${fmt(a/2)}²+${fmt(h)}²)`,val:`= ${fmt(s)} birim`},
+      {lbl:'Üçgen taban alanı',expr:`a·h/2 = ${fmt(a)}·${fmt(h)}/2`,val:`= ${fmt(tb)} birim²`},
+      {lbl:'Yanal alan',expr:`(a+2s)·L = (${fmt(a)}+2·${fmt(s)})·${fmt(L)}`,val:`= ${fmt((a+2*s)*L)} birim²`},
+      {lbl:'Toplam yüzey',expr:`2·${fmt(tb)} + ${fmt((a+2*s)*L)}`,val:`= ${fmt(2*tb+(a+2*s)*L)} birim²`},
+      {lbl:'Hacim',expr:`taban·L = ${fmt(tb)}·${fmt(L)}`,val:`= ${fmt(tb*L)} birim³`}];}
+  },
+
+  /* ---- Dik Üçgen Prizma ---- */
+  dik_ucgen:{
+    name:'Dik Üçgen\nPrizma',icon:rightTriIcon(),
+    dims:[{key:'a',label:'Dik kenar a',val:3},{key:'b',label:'Dik kenar b',val:4},{key:'L',label:'Derinlik L',val:5}],
+    legend:[['Taban (dik üçgen)',COLORS.base],['Yan yüz',COLORS.side]],
+    build:(p)=>triPrismBuild(p.a,p.b,p.L,true),
+    calc:(p)=>{const{a,b,L}=p; const c=Math.sqrt(a*a+b*b); const tb=a*b/2; return{
+      taban:{f:'(a·b)/2',v:tb,note:`c=${fmt(c)}`},
+      yanal:{f:'(a+b+c)·L',v:(a+b+c)*L},
+      yuzey:{f:'2·taban + yanal',v:2*tb+(a+b+c)*L},
+      hacim:{f:'taban·L',v:tb*L}};},
+    steps:(p)=>{const{a,b,L}=p; const c=Math.sqrt(a*a+b*b); const tb=a*b/2; return[
+      {lbl:'Hipotenüs c',expr:`√(a²+b²) = √(${fmt(a)}²+${fmt(b)}²)`,val:`= ${fmt(c)} birim`},
+      {lbl:'Taban alanı',expr:`a·b/2 = ${fmt(a)}·${fmt(b)}/2`,val:`= ${fmt(tb)} birim²`},
+      {lbl:'Yanal alan',expr:`(a+b+c)·L`,val:`= ${fmt((a+b+c)*L)} birim²`},
+      {lbl:'Toplam yüzey',expr:`2·${fmt(tb)} + ${fmt((a+b+c)*L)}`,val:`= ${fmt(2*tb+(a+b+c)*L)} birim²`},
+      {lbl:'Hacim',expr:`taban·L = ${fmt(tb)}·${fmt(L)}`,val:`= ${fmt(tb*L)} birim³`}];}
+  },
+
+  /* ---- Silindir ---- */
+  silindir:{
+    name:'Silindir',icon:cylIcon(),
+    dims:[{key:'r',label:'Yarıçap r',val:2},{key:'h',label:'Yükseklik h',val:4}],
+    legend:[['Taban/Üst',COLORS.base],['Yanal',COLORS.lateral]],
+    build:(p)=>cylinderBuild(p.r,p.h),
+    calc:(p)=>{const{r,h}=p; return{
+      taban:{f:'π·r²',v:PI*r*r},
+      yanal:{f:'2·π·r·h',v:2*PI*r*h},
+      yuzey:{f:'2πr²+2πrh',v:2*PI*r*r+2*PI*r*h},
+      hacim:{f:'π·r²·h',v:PI*r*r*h}};},
+    steps:(p)=>{const{r,h}=p; return[
+      {lbl:'Çevre',expr:`2πr = 2·π·${fmt(r)}`,val:`= ${fmt(2*PI*r)} birim`},
+      {lbl:'Taban alanı',expr:`πr² = π·${fmt(r)}²`,val:`= ${fmt(PI*r*r)} birim²`},
+      {lbl:'Yanal alan (dikdörtgen)',expr:`2πr·h = ${fmt(2*PI*r)}·${fmt(h)}`,val:`= ${fmt(2*PI*r*h)} birim²`},
+      {lbl:'Toplam yüzey',expr:`2·${fmt(PI*r*r)} + ${fmt(2*PI*r*h)}`,val:`= ${fmt(2*PI*r*r+2*PI*r*h)} birim²`},
+      {lbl:'Hacim',expr:`πr²·h = ${fmt(PI*r*r)}·${fmt(h)}`,val:`= ${fmt(PI*r*r*h)} birim³`}];}
+  },
+
+  /* ---- Koni ---- */
+  koni:{
+    name:'Koni',icon:coneIcon(),
+    dims:[{key:'r',label:'Yarıçap r',val:2.2},{key:'h',label:'Yükseklik h',val:4}],
+    legend:[['Taban',COLORS.base],['Yanal',COLORS.lateral]],
+    build:(p)=>coneBuild(p.r,p.h),
+    calc:(p)=>{const{r,h}=p; const l=Math.sqrt(r*r+h*h); return{
+      taban:{f:'π·r²',v:PI*r*r},
+      yanal:{f:'π·r·l',v:PI*r*l,note:`l=${fmt(l)}`},
+      yuzey:{f:'πr²+πrl',v:PI*r*r+PI*r*l},
+      hacim:{f:'(1/3)·π·r²·h',v:PI*r*r*h/3}};},
+    steps:(p)=>{const{r,h}=p; const l=Math.sqrt(r*r+h*h); return[
+      {lbl:'Eğik yükseklik l',expr:`√(r²+h²) = √(${fmt(r)}²+${fmt(h)}²)`,val:`= ${fmt(l)} birim`},
+      {lbl:'Taban alanı',expr:`πr² = π·${fmt(r)}²`,val:`= ${fmt(PI*r*r)} birim²`},
+      {lbl:'Yanal alan',expr:`π·r·l = π·${fmt(r)}·${fmt(l)}`,val:`= ${fmt(PI*r*l)} birim²`},
+      {lbl:'Toplam yüzey',expr:`πr²+πrl`,val:`= ${fmt(PI*r*r+PI*r*l)} birim²`},
+      {lbl:'Hacim',expr:`(1/3)·π·r²·h`,val:`= ${fmt(PI*r*r*h/3)} birim³`}];}
+  },
+
+  /* ---- Kare Piramit ---- */
+  piramit:{
+    name:'Kare Piramit',icon:pyrIcon(),
+    dims:[{key:'a',label:'Taban a',val:4},{key:'h',label:'Yükseklik h',val:3.5}],
+    legend:[['Taban',COLORS.base],['Yan yüz',COLORS.side]],
+    build:(p)=>pyramidBuild(p.a,p.h),
+    calc:(p)=>{const{a,h}=p; const sl=Math.sqrt(h*h+(a/2)**2); return{
+      taban:{f:'a²',v:a*a},
+      yanal:{f:'2·a·s',v:2*a*sl,note:`s=${fmt(sl)}`},
+      yuzey:{f:'a²+2·a·s',v:a*a+2*a*sl},
+      hacim:{f:'(1/3)·a²·h',v:a*a*h/3}};},
+    steps:(p)=>{const{a,h}=p; const sl=Math.sqrt(h*h+(a/2)**2); return[
+      {lbl:'Yan yükseklik s',expr:`√(h²+(a/2)²)`,val:`= ${fmt(sl)} birim`},
+      {lbl:'Taban alanı',expr:`a² = ${fmt(a)}²`,val:`= ${fmt(a*a)} birim²`},
+      {lbl:'Yanal alan (4 üçgen)',expr:`2·a·s = 2·${fmt(a)}·${fmt(sl)}`,val:`= ${fmt(2*a*sl)} birim²`},
+      {lbl:'Toplam yüzey',expr:`a²+2as`,val:`= ${fmt(a*a+2*a*sl)} birim²`},
+      {lbl:'Hacim',expr:`(1/3)·a²·h`,val:`= ${fmt(a*a*h/3)} birim³`}];}
+  },
+
+  /* ---- Küre ---- */
+  kure:{
+    name:'Küre',icon:sphereIcon(),
+    dims:[{key:'r',label:'Yarıçap r',val:2.5}],
+    legend:[['Yüzey',COLORS.lateral]],
+    build:(p)=>sphereBuild(p.r),
+    calc:(p)=>{const{r}=p; return{
+      taban:{f:'π·r²',v:PI*r*r,note:'Büyük daire'},
+      yanal:{f:'4·π·r²',v:4*PI*r*r},
+      yuzey:{f:'4·π·r²',v:4*PI*r*r},
+      hacim:{f:'(4/3)·π·r³',v:4/3*PI*r*r*r}};},
+    steps:(p)=>{const{r}=p; return[
+      {lbl:'Büyük daire alanı',expr:`πr² = π·${fmt(r)}²`,val:`= ${fmt(PI*r*r)} birim²`},
+      {lbl:'Toplam yüzey',expr:`4πr² = 4·π·${fmt(r)}²`,val:`= ${fmt(4*PI*r*r)} birim²`},
+      {lbl:'Hacim',expr:`(4/3)πr³ = (4/3)·π·${fmt(r)}³`,val:`= ${fmt(4/3*PI*r*r*r)} birim³`}];}
+  },
+
+  /* ---- Kesik Koni (Koni Kesiti / Frustum) ---- */
+  kesik_koni:{
+    name:'Kesik Koni',icon:frustumIcon(),
+    dims:[{key:'R',label:'Alt yarıçap R',val:3},{key:'r',label:'Üst yarıçap r',val:1.5},{key:'h',label:'Yükseklik h',val:4}],
+    legend:[['Alt taban',COLORS.base],['Üst taban',COLORS.top],['Yanal',COLORS.lateral]],
+    build:(p)=>frustumBuild(p.R,p.r,p.h),
+    calc:(p)=>{const{R,r,h}=p; const l=Math.sqrt(h*h+(R-r)**2); return{
+      taban:{f:'π·R²',v:PI*R*R},
+      yanal:{f:'π·(R+r)·l',v:PI*(R+r)*l,note:`l=${fmt(l)}`},
+      yuzey:{f:'π(R²+r²+(R+r)l)',v:PI*(R*R+r*r+(R+r)*l)},
+      hacim:{f:'(π·h/3)(R²+Rr+r²)',v:PI*h/3*(R*R+R*r+r*r)}};},
+    steps:(p)=>{const{R,r,h}=p; const l=Math.sqrt(h*h+(R-r)**2); return[
+      {lbl:'Eğik yükseklik l',expr:`√(h²+(R-r)²)`,val:`= ${fmt(l)} birim`},
+      {lbl:'Alt taban alanı',expr:`πR² = π·${fmt(R)}²`,val:`= ${fmt(PI*R*R)} birim²`},
+      {lbl:'Üst taban alanı',expr:`πr² = π·${fmt(r)}²`,val:`= ${fmt(PI*r*r)} birim²`},
+      {lbl:'Yanal alan',expr:`π(R+r)·l`,val:`= ${fmt(PI*(R+r)*l)} birim²`},
+      {lbl:'Toplam yüzey',expr:`π(R²+r²+(R+r)l)`,val:`= ${fmt(PI*(R*R+r*r+(R+r)*l))} birim²`},
+      {lbl:'Hacim',expr:`(πh/3)(R²+Rr+r²)`,val:`= ${fmt(PI*h/3*(R*R+R*r+r*r))} birim³`}];}
+  }
+};
+
+/* ============================================================
+   GEOMETRİ KURUCULAR
+   ============================================================ */
+
+/* ---- Kutu / Küp ---- */
+function boxBuild(a,b,c){
+  const g=new THREE.Group();
+  const bottom=planeFace(a,b,COLORS.base); g.add(bottom);
+  const pX=pivot(a/2,0,0); const fX=planeFace(c,b,COLORS.side); fX.position.set(c/2,0,0); pX.add(fX); g.add(pX);
+  const nX=pivot(-a/2,0,0); const fnX=planeFace(c,b,COLORS.side); fnX.position.set(-c/2,0,0); nX.add(fnX); g.add(nX);
+  const pZ=pivot(0,0,b/2); const fZ=planeFace(a,c,COLORS.side); fZ.position.set(0,0,c/2); pZ.add(fZ); g.add(pZ);
+  const nZ=pivot(0,0,-b/2); const fnZ=planeFace(a,c,COLORS.side); fnZ.position.set(0,0,-c/2); nZ.add(fnZ); g.add(nZ);
+  const pTop=pivot(c,0,0); const top=planeFace(a,b,COLORS.top); top.position.set(a/2,0,0); pTop.add(top); pX.add(pTop);
+
+  /* etiketler */
+  const lblGroup=new THREE.Group(); g.add(lblGroup);
+  function addLbl(txt,x,y,z,ang=false){
+    const l=makeLabel(txt,ang); l.position.set(x,y,z); lblGroup.add(l);
+  }
+  addLbl(`a=${fmt(a)}`,0,0.15,b/2+0.3);
+  addLbl(`b=${fmt(b)}`,a/2+0.3,0.15,0);
+  addLbl(`c=${fmt(c)}`,a/2+0.3,c/2+0.3,b/2+0.3);
+
+  function setFold(t){
+    pX.rotation.z= PI/2*t; nX.rotation.z=-PI/2*t;
+    pZ.rotation.x=-PI/2*t; nZ.rotation.x= PI/2*t;
+    pTop.rotation.z=PI/2*t;
+    lblGroup.visible=labelsVisible;
+  }
+  setFold(1);
+  return{group:g,setFold,span:Math.max(a,b,c)};
+}
+
+/* ---- Üçgen / Dik Üçgen Prizma ---- */
+function triPrismBuild(a,h,L,rightAngle){
+  const g=new THREE.Group();
+  let s,pts;
+  if(rightAngle){
+    // dik üçgen: kateter a (x), kateter h (y→z), hipotenüs c
+    s=Math.sqrt(a*a+h*h);
+    pts=[[0,0],[a,0],[0,h]];
+  } else {
+    s=Math.sqrt((a/2)**2+h*h);
+    pts=[[-a/2,0],[a/2,0],[0,h]];
+  }
+  const bottom=planeFace(rightAngle?a:a,L,COLORS.base); g.add(bottom);
+  const phi=rightAngle? Math.atan2(h,-a) : Math.atan2(h,-a/2);
+  const pX=pivot(rightAngle?a:a/2,0,0);
+  const fX=planeFace(s,L,COLORS.side); fX.position.set(rightAngle?s/2:s/2,0,0); pX.add(fX); g.add(pX);
+  const nX=pivot(rightAngle?0:-a/2,0,0);
+  const fnX=planeFace(rightAngle?h:s,L,COLORS.side); fnX.position.set(rightAngle?-h/2:-s/2,0,0); nX.add(fnX); g.add(nX);
+  const pZ=pivot(0,0,L/2);
+  const tA=triFace(pts,COLORS.base); pZ.add(tA); g.add(pZ);
+  const nZ=pivot(0,0,-L/2);
+  const pts2=rightAngle?[[0,0],[a,0],[0,-h]]:pts.map(p=>[p[0],-p[1]]);
+  const tB=triFace(pts2,COLORS.base); nZ.add(tB); g.add(nZ);
+
+  /* etiketler */
+  const lblGroup=new THREE.Group(); g.add(lblGroup);
+  function addLbl(txt,x,y,z,ang=false){
+    const l=makeLabel(txt,ang); l.position.set(x,y,z); lblGroup.add(l);
+  }
+  if(rightAngle){
+    addLbl(`a=${fmt(a)}`,a/2,0.15,L/2+0.3);
+    addLbl(`b=${fmt(h)}`,-(0.4),h/2,L/2+0.3);
+    addLbl(`c=${fmt(s)}`,a/2+0.3,h/2,L/2+0.3);
+    addLbl(`L=${fmt(L)}`,a/2+0.3,0.15,0);
+    addLbl('90°',0.15,0.15,L/2+0.3,true);
+  } else {
+    addLbl(`a=${fmt(a)}`,0,0.15,L/2+0.3);
+    addLbl(`h=${fmt(h)}`,a/2+0.3,h/2,L/2+0.3);
+    addLbl(`L=${fmt(L)}`,a/2+0.3,0.15,0);
+  }
+
+  function setFold(t){
+    const phiR=rightAngle? Math.atan2(h,-a) : phi;
+    pX.rotation.z= phiR*t;
+    nX.rotation.z=rightAngle? -PI/2*t : -phiR*t;
+    pZ.rotation.x=-PI/2*t; nZ.rotation.x= PI/2*t;
+    lblGroup.visible=labelsVisible;
+  }
+  setFold(1);
+  return{group:g,setFold,span:Math.max(a,h,L)};
+}
+
+/* ---- Kare Piramit ---- */
+function pyramidBuild(a,h){
+  const g=new THREE.Group();
+  const bottom=planeFace(a,a,COLORS.base); g.add(bottom);
+  const l=Math.sqrt(h*h+(a/2)**2);
+  const phi=Math.atan2(h,-a/2);
+  const pX=pivot(a/2,0,0); pX.add(triFace([[0,-a/2],[0,a/2],[l,0]],COLORS.side)); g.add(pX);
+  const nX=pivot(-a/2,0,0); nX.add(triFace([[0,-a/2],[0,a/2],[-l,0]],COLORS.side)); g.add(nX);
+  const pZ=pivot(0,0,a/2); pZ.add(triFace([[-a/2,0],[a/2,0],[0,l]],COLORS.side)); g.add(pZ);
+  const nZ=pivot(0,0,-a/2); nZ.add(triFace([[-a/2,0],[a/2,0],[0,-l]],COLORS.side)); g.add(nZ);
+
+  const lblGroup=new THREE.Group(); g.add(lblGroup);
+  const lObj=makeLabel(`a=${fmt(a)}`); lObj.position.set(a/2+0.3,0.15,0); lblGroup.add(lObj);
+  const hObj=makeLabel(`h=${fmt(h)}`); hObj.position.set(0.3,h/2,0.3); lblGroup.add(hObj);
+  const sObj=makeLabel(`s=${fmt(l)}`); sObj.position.set(a/2+0.4,h/3,a/4); lblGroup.add(sObj);
+
+  function setFold(t){
+    pX.rotation.z= phi*t; nX.rotation.z=-phi*t;
+    pZ.rotation.x=-phi*t; nZ.rotation.x= phi*t;
+    lblGroup.visible=labelsVisible;
+  }
+  setFold(1);
+  return{group:g,setFold,span:Math.max(a,h*1.2)};
+}
+
+/* ---- Silindir (morph) ---- */
+function cylinderBuild(r,h){
+  const g=new THREE.Group();
+  const nU=72,nV=8,W=2*PI*r;
+  const flat=[],target=[],idx=[];
+  for(let j=0;j<=nV;j++) for(let i=0;i<=nU;i++){
+    const u=i/nU,vy=j/nV*h;
+    flat.push((u-0.5)*W,0,vy-h/2);
+    const ang=u*2*PI;
+    target.push(r*Math.sin(ang),vy,r*Math.cos(ang));
+  }
+  for(let j=0;j<nV;j++) for(let i=0;i<nU;i++){
+    const A=j*(nU+1)+i,B=A+1,C=A+nU+1,D=C+1;
+    idx.push(A,B,D,A,D,C);
+  }
+  const lateral=morphMesh(flat,target,idx,COLORS.lateral); g.add(lateral);
+  const bottom=disk(r,COLORS.base),top=disk(r,COLORS.base); g.add(bottom,top);
+
+  const lblGroup=new THREE.Group(); g.add(lblGroup);
+  const rLbl=makeLabel(`r=${fmt(r)}`); rLbl.position.set(r+0.3,0.15,0); lblGroup.add(rLbl);
+  const hLbl=makeLabel(`h=${fmt(h)}`); hLbl.position.set(r+0.5,h/2,0); lblGroup.add(hLbl);
+
+  function setFold(t){
+    applyMorph(lateral,t);
+    bottom.position.set(0,0,lerp(-h/2-r-0.4,0,t));
+    top.position.set(0,lerp(0,h,t),lerp(h/2+r+0.4,0,t));
+    lblGroup.visible=labelsVisible;
+  }
+  setFold(1);
+  return{group:g,setFold,span:Math.max(W*0.6,h,2*r)};
+}
+
+/* ---- Koni (morph) ---- */
+function coneBuild(r,h){
+  const g=new THREE.Group();
+  const l=Math.sqrt(r*r+h*h);
+  const TH=2*PI*r/l;
+  const nA=72,nR=8;
+  const flat=[],target=[],idx=[];
+  for(let j=0;j<=nR;j++) for(let i=0;i<=nA;i++){
+    const rho=j/nR,ang=i/nA;
+    const al=(ang-0.5)*TH;
+    flat.push(rho*l*Math.sin(al),0,rho*l*Math.cos(al));
+    const be=ang*2*PI;
+    target.push(rho*r*Math.sin(be),h*(1-rho),rho*r*Math.cos(be));
+  }
+  for(let j=0;j<nR;j++) for(let i=0;i<nA;i++){
+    const A=j*(nA+1)+i,B=A+1,C=A+nA+1,D=C+1;
+    idx.push(A,B,D,A,D,C);
+  }
+  const lateral=morphMesh(flat,target,idx,COLORS.lateral); g.add(lateral);
+  const base=disk(r,COLORS.base); g.add(base);
+
+  const lblGroup=new THREE.Group(); g.add(lblGroup);
+  const rLbl=makeLabel(`r=${fmt(r)}`); rLbl.position.set(r+0.3,0.15,0); lblGroup.add(rLbl);
+  const hLbl=makeLabel(`h=${fmt(h)}`); hLbl.position.set(0.3,h/2,0.3); lblGroup.add(hLbl);
+  const lLbl=makeLabel(`l=${fmt(l)}`); lLbl.position.set(r*0.5+0.3,h*0.5,r*0.5+0.3); lblGroup.add(lLbl);
+
+  function setFold(t){
+    applyMorph(lateral,t);
+    base.position.set(0,0,lerp(l+r+0.5,0,t));
+    lblGroup.visible=labelsVisible;
+  }
+  setFold(1);
+  return{group:g,setFold,span:Math.max(2*l*Math.sin(TH/2)||r,h,2*r)};
+}
+
+/* ---- Küre ---- */
+function sphereBuild(r){
+  const g=new THREE.Group();
+  // Küre morph: düz daire (lat/lon grid) → küre
+  const nU=36,nV=18;
+  const flat=[],target=[],idx=[];
+  for(let j=0;j<=nV;j++) for(let i=0;i<=nU;i++){
+    const u=i/nU,v=j/nV;
+    // düz: UV grid zeminde
+    flat.push((u-0.5)*2*PI*r*0.8,0,(v-0.5)*PI*r*0.8);
+    // katlı: küre
+    const phi2=v*PI,theta=u*2*PI;
+    target.push(r*Math.sin(phi2)*Math.sin(theta),r*Math.cos(phi2)+r,r*Math.sin(phi2)*Math.cos(theta));
+  }
+  for(let j=0;j<nV;j++) for(let i=0;i<nU;i++){
+    const A=j*(nU+1)+i,B=A+1,C=A+nU+1,D=C+1;
+    idx.push(A,B,D,A,D,C);
+  }
+  const surf=morphMesh(flat,target,idx,COLORS.lateral); g.add(surf);
+
+  // ekvator çizgisi (kapalı halde)
+  const eqPts=[];
+  for(let i=0;i<=64;i++){const a=i/64*2*PI; eqPts.push(new THREE.Vector3(r*Math.sin(a),r,r*Math.cos(a)));}
+  const eqGeo=new THREE.BufferGeometry().setFromPoints(eqPts);
+  const eq=new THREE.Line(eqGeo,new THREE.LineBasicMaterial({color:0x4ea1ff,transparent:true,opacity:0.6}));
+  g.add(eq);
+
+  const lblGroup=new THREE.Group(); g.add(lblGroup);
+  const rLbl=makeLabel(`r=${fmt(r)}`); rLbl.position.set(r+0.3,r,0); lblGroup.add(rLbl);
+  const dLbl=makeLabel(`d=${fmt(2*r)}`); dLbl.position.set(0,2*r+0.4,0); lblGroup.add(dLbl);
+
+  function setFold(t){
+    applyMorph(surf,t);
+    eq.visible=t>0.7;
+    lblGroup.visible=labelsVisible;
+  }
+  setFold(1);
+  return{group:g,setFold,span:2*r+1};
+}
+
+/* ---- Kesik Koni (Frustum morph) ---- */
+function frustumBuild(R,r,h){
+  const g=new THREE.Group();
+  const l=Math.sqrt(h*h+(R-r)**2);
+  const TH=2*PI*(R+r)/2/l; // yaklaşık sektör açısı
+  const nA=72,nR=8;
+  const flat=[],target=[],idx=[];
+  // düz: iki yarım-daire dilimi yan yana
+  const R1=l+r*l/Math.max(R-r,0.001); // dış yarıçap
+  const R0=r*l/Math.max(R-r,0.001);   // iç yarıçap (sıfır koni tepesi mesafesi)
+  const sectorAngle=2*PI*R/l;
+  for(let j=0;j<=nR;j++) for(let i=0;i<=nA;i++){
+    const rho=j/nR, ang=i/nA;
+    const cr=lerp(R0,R0+l,rho);
+    const al=(ang-0.5)*sectorAngle;
+    flat.push(cr*Math.sin(al),0,cr*Math.cos(al));
+    const be=ang*2*PI;
+    const curR=lerp(R,r,rho);
+    target.push(curR*Math.sin(be),rho*h,curR*Math.cos(be));
+  }
+  for(let j=0;j<nR;j++) for(let i=0;i<nA;i++){
+    const A=j*(nA+1)+i,B=A+1,C=A+nA+1,D=C+1;
+    idx.push(A,B,D,A,D,C);
+  }
+  const lateral=morphMesh(flat,target,idx,COLORS.lateral); g.add(lateral);
+  const bottom=disk(R,COLORS.base); g.add(bottom);
+  const top=disk(r,COLORS.top); g.add(top);
+
+  const lblGroup=new THREE.Group(); g.add(lblGroup);
+  const RLbl=makeLabel(`R=${fmt(R)}`); RLbl.position.set(R+0.3,0.15,0); lblGroup.add(RLbl);
+  const rLbl=makeLabel(`r=${fmt(r)}`); rLbl.position.set(r+0.3,h+0.3,0); lblGroup.add(rLbl);
+  const hLbl=makeLabel(`h=${fmt(h)}`); hLbl.position.set(R+0.5,h/2,0); lblGroup.add(hLbl);
+  const lLbl=makeLabel(`l=${fmt(l)}`); lLbl.position.set((R+r)/2+0.4,h/2+0.3,0); lblGroup.add(lLbl);
+
+  function setFold(t){
+    applyMorph(lateral,t);
+    bottom.position.set(0,0,lerp(-(R0+l/2)-R-0.5,0,t));
+    top.position.set(0,lerp(0,h,t),lerp(R0/2+R+0.5,0,t));
+    lblGroup.visible=labelsVisible;
+  }
+  setFold(1);
+  return{group:g,setFold,span:Math.max(2*R,h,2*(R0+l)*Math.sin(sectorAngle/2)||2*R)};
+}
+
+/* ============================================================
+   UI / DURUM
+   ============================================================ */
+let activeKey='kup', params={}, folding=false, foldDir=-1;
+const foldSlider=document.getElementById('fold');
+
+function toggleLabels(){
+  labelsVisible=!labelsVisible;
+  const btn=document.getElementById('toggleLbl');
+  btn.classList.toggle('on',labelsVisible);
+  if(current) applyFold(parseFloat(foldSlider.value));
+}
+
+function toggleSolution(){
+  solOpen=!solOpen;
+  const panel=document.getElementById('sol-panel');
+  const btn=document.getElementById('toggleSol');
+  panel.classList.toggle('open',solOpen);
+  btn.textContent=solOpen?'▲ Çözümü Kapat':'📐 Adım Adım Çözüm';
+  if(solOpen) renderSolution();
+}
+
+function renderSolution(){
+  const panel=document.getElementById('sol-panel');
+  const def=SHAPES[activeKey];
+  if(!def.steps){panel.innerHTML='<div style="color:var(--muted);font-size:12px">Bu cisim için adım yok.</div>';return;}
+  const steps=def.steps(params);
+  panel.innerHTML=steps.map((s,i)=>`
+    <div class="step">
+      <div class="step-num">${i+1}</div>
+      <div class="step-body">
+        <div class="s-label">${s.lbl}</div>
+        <div class="s-expr">${s.expr}</div>
+        <div class="s-val">${s.val}</div>
+      </div>
+    </div>`).join('');
+}
+
+function buildShapeButtons(){
+  const wrap=document.getElementById('shapes'); wrap.innerHTML='';
+  Object.entries(SHAPES).forEach(([key,s])=>{
+    const b=document.createElement('div');
+    b.className='shape-btn'+(key===activeKey?' active':'');
+    b.innerHTML=s.icon+`<span style="text-align:center;line-height:1.2">${s.name}</span>`;
+    b.onclick=()=>selectShape(key);
+    wrap.appendChild(b);
+  });
+}
+
+function buildDimInputs(){
+  const wrap=document.getElementById('dims'); wrap.innerHTML='';
+  SHAPES[activeKey].dims.forEach(d=>{
+    const row=document.createElement('div'); row.className='ctrl';
+    row.innerHTML=`<label>${d.label}</label>`;
+    const inp=document.createElement('input');
+    inp.type='number'; inp.min='0.1'; inp.step='0.1'; inp.value=params[d.key];
+    inp.oninput=()=>{const v=parseFloat(inp.value); if(v>0){params[d.key]=v; rebuild();}};
+    row.appendChild(inp); wrap.appendChild(row);
+  });
+}
+
+function selectShape(key){
+  activeKey=key; params={};
+  SHAPES[key].dims.forEach(d=>params[d.key]=d.val);
+  buildShapeButtons(); buildDimInputs(); rebuild(); frameCamera();
+}
+
+function rebuild(){
+  if(current){root.remove(current.group);}
+  const built=SHAPES[activeKey].build(params);
+  current=built; root.add(built.group);
+  document.getElementById('title-over').textContent=SHAPES[activeKey].name;
+  buildLegend();
+  applyFold(parseFloat(foldSlider.value));
+  updateResults();
+  if(solOpen) renderSolution();
+}
+
+function applyFold(t){
+  if(current) current.setFold(t);
+  const badge=document.getElementById('state-badge');
+  if(t<0.02) badge.textContent='🟢 Açık — Net (açılım)';
+  else if(t>0.98) badge.textContent='🔵 Kapalı — Katı cisim';
+  else badge.textContent='🟡 Katlanıyor… '+Math.round(t*100)+'%';
+}
+
+function buildLegend(){
+  const wrap=document.getElementById('legend'); wrap.innerHTML='';
+  SHAPES[activeKey].legend.forEach(([txt,col])=>{
+    const s=document.createElement('span');
+    s.innerHTML=`<span class="dot" style="background:#${col.toString(16).padStart(6,'0')}"></span>${txt}`;
+    wrap.appendChild(s);
+  });
+}
+
+function updateResults(){
+  const c=SHAPES[activeKey].calc(params);
+  const labels={taban:'Taban Alanı',yanal:'Yanal Alan',yuzey:'Yüzey Alanı',hacim:'Hacim'};
+  const units={taban:'birim²',yanal:'birim²',yuzey:'birim²',hacim:'birim³'};
+  const wrap=document.getElementById('res-cards'); wrap.innerHTML='';
+  ['taban','yanal','yuzey','hacim'].forEach(k=>{
+    if(!c[k])return;
+    const d=document.createElement('div'); d.className='res-card';
+    d.innerHTML=`<div class="name"><span>${labels[k]}</span>${c[k].note?`<span style="color:var(--accent2);font-size:11px">${c[k].note}</span>`:''}</div>
+      <div class="formula">${c[k].f}</div>
+      <div class="val">${c[k].v.toFixed(2)} <small>${units[k]}</small></div>`;
+    wrap.appendChild(d);
+  });
+}
+
+function frameCamera(){
+  const sp=(current&&current.span)||5;
+  const d=sp*2.2+4;
+  camera.position.set(d*0.7,d*0.6,d*0.85);
+  controls.target.set(0,sp*0.25,0);
+  controls.update();
+}
+
+/* ---- olaylar ---- */
+foldSlider.oninput=()=>{folding=false; applyFold(parseFloat(foldSlider.value));};
+document.getElementById('play').onclick=()=>{
+  folding=!folding;
+  const v=parseFloat(foldSlider.value);
+  foldDir=v>0.5?-1:1;
+};
+document.getElementById('resetCam').onclick=frameCamera;
+
+/* ---- render döngüsü ---- */
+function tick(){
+  requestAnimationFrame(tick);
+  if(folding){
+    let v=parseFloat(foldSlider.value)+foldDir*0.012;
+    if(v<=0){v=0;folding=false;} if(v>=1){v=1;folding=false;}
+    foldSlider.value=v; applyFold(v);
+  }
+  controls.update();
+  renderer.render(scene,camera);
+  labelRenderer.render(scene,camera);
+}
+
+function resize(){
+  const w=canvas.clientWidth,h=canvas.clientHeight;
+  if(canvas.width!==w||canvas.height!==h){
+    renderer.setSize(w,h,false);
+    labelRenderer.setSize(w,h);
+    camera.aspect=w/h; camera.updateProjectionMatrix();
+  }
+}
+window.addEventListener('resize',resize);
+
+/* ---- SVG ikonlar ---- */
+function cubeIcon(){return svgWrap('<path d="M4 8l8-4 8 4v8l-8 4-8-4z"/><path d="M4 8l8 4 8-4M12 12v8"/>');}
+function boxIcon(){return svgWrap('<path d="M3 9l9-4 9 4v6l-9 4-9-4z"/><path d="M3 9l9 4 9-4M12 13v6"/>');}
+function triPrismIcon(){return svgWrap('<path d="M7 18l5-11 5 11z"/><path d="M7 18l-2 2M17 18l2 2M12 7l2 2"/>');}
+function rightTriIcon(){return svgWrap('<path d="M5 18h13M5 18V6l13 12"/><path d="M5 13l3 0 0-3"/>');}
+function cylIcon(){return svgWrap('<ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v12a7 3 0 0 0 14 0V6"/>');}
+function coneIcon(){return svgWrap('<path d="M12 3l7 15H5z"/><ellipse cx="12" cy="18" rx="7" ry="2.5"/>');}
+function pyrIcon(){return svgWrap('<path d="M12 3l9 15H3z"/><path d="M12 3l-3 15M12 3l3 15"/>');}
+function sphereIcon(){return svgWrap('<circle cx="12" cy="12" r="8"/><ellipse cx="12" cy="12" rx="8" ry="3.5"/><line x1="4" y1="12" x2="20" y2="12"/>');}
+function frustumIcon(){return svgWrap('<path d="M4 17h16M7 7h10"/><path d="M4 17l3-10M20 17l-3-10"/>');}
+function svgWrap(inner){return `<svg viewBox="0 0 24 24" fill="none" stroke="#cfe0ff" stroke-width="1.4" stroke-linejoin="round">${inner}</svg>`;}
+
+/* ---- başlat ---- */
+// etiket butonu başlangıç durumu
+document.getElementById('toggleLbl').classList.add('on');
+selectShape('kup');
+resize(); frameCamera(); tick();
+</script>
+</body>
+</html>
