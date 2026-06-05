@@ -253,6 +253,18 @@ function disk(r,color){
 }
 function lerp(a,b,t){return a+(b-a)*t;}
 function fmt(v,d=2){return v.toFixed(d);}
+function fmtPi(v){
+  // v = katsayı × π  →  "katsayıπ" göster
+  const c=v/PI;
+  const rounded=Math.round(c*1000)/1000;
+  // Tam sayıya yakınsa
+  if(Math.abs(rounded-Math.round(rounded))<0.0015) return `${Math.round(rounded)}π`;
+  // 1 ondalıklıya yakınsa
+  const t1=Math.round(rounded*10)/10;
+  if(Math.abs(rounded-t1)<0.0015) return `${t1}π`;
+  // 2 ondalıklı
+  return `${c.toFixed(2)}π`;
+}
 
 /* ============================================================
    CİSİM TANIMLARI
@@ -340,16 +352,16 @@ const SHAPES={
     legend:[['Taban/Üst',COLORS.base],['Yanal',COLORS.lateral]],
     build:(p)=>cylinderBuild(p.r,p.h),
     calc:(p)=>{const{r,h}=p; return{
-      taban:{f:'π·r²',v:PI*r*r},
-      yanal:{f:'2·π·r·h',v:2*PI*r*h},
-      yuzey:{f:'2πr²+2πrh',v:2*PI*r*r+2*PI*r*h},
-      hacim:{f:'π·r²·h',v:PI*r*r*h}};},
+      taban:{f:'π·r²',v:PI*r*r,pi:true},
+      yanal:{f:'2·π·r·h',v:2*PI*r*h,pi:true},
+      yuzey:{f:'2πr²+2πrh',v:2*PI*r*r+2*PI*r*h,pi:true},
+      hacim:{f:'π·r²·h',v:PI*r*r*h,pi:true}};},
     steps:(p)=>{const{r,h}=p; return[
-      {lbl:'Çevre',expr:`2πr = 2·π·${fmt(r)}`,val:`= ${fmt(2*PI*r)} birim`},
-      {lbl:'Taban alanı',expr:`πr² = π·${fmt(r)}²`,val:`= ${fmt(PI*r*r)} birim²`},
-      {lbl:'Yanal alan (dikdörtgen)',expr:`2πr·h = ${fmt(2*PI*r)}·${fmt(h)}`,val:`= ${fmt(2*PI*r*h)} birim²`},
-      {lbl:'Toplam yüzey',expr:`2·${fmt(PI*r*r)} + ${fmt(2*PI*r*h)}`,val:`= ${fmt(2*PI*r*r+2*PI*r*h)} birim²`},
-      {lbl:'Hacim',expr:`πr²·h = ${fmt(PI*r*r)}·${fmt(h)}`,val:`= ${fmt(PI*r*r*h)} birim³`}];}
+      {lbl:'Çevre',expr:`2πr = 2·π·${fmt(r)}`,val:`= ${fmtPi(2*PI*r)} birim`},
+      {lbl:'Taban alanı',expr:`πr² = π·${fmt(r)}²`,val:`= ${fmtPi(PI*r*r)} birim²`},
+      {lbl:'Yanal alan (dikdörtgen)',expr:`2πr·h = ${fmtPi(2*PI*r)}·${fmt(h)}`,val:`= ${fmtPi(2*PI*r*h)} birim²`},
+      {lbl:'Toplam yüzey',expr:`2·${fmtPi(PI*r*r)} + ${fmtPi(2*PI*r*h)}`,val:`= ${fmtPi(2*PI*r*r+2*PI*r*h)} birim²`},
+      {lbl:'Hacim',expr:`πr²·h = ${fmtPi(PI*r*r)}·${fmt(h)}`,val:`= ${fmtPi(PI*r*r*h)} birim³`}];}
   },
 
   /* ---- Koni ---- */
@@ -359,16 +371,16 @@ const SHAPES={
     legend:[['Taban',COLORS.base],['Yanal',COLORS.lateral]],
     build:(p)=>coneBuild(p.r,p.h),
     calc:(p)=>{const{r,h}=p; const l=Math.sqrt(r*r+h*h); return{
-      taban:{f:'π·r²',v:PI*r*r},
-      yanal:{f:'π·r·l',v:PI*r*l,note:`l=${fmt(l)}`},
-      yuzey:{f:'πr²+πrl',v:PI*r*r+PI*r*l},
-      hacim:{f:'(1/3)·π·r²·h',v:PI*r*r*h/3}};},
+      taban:{f:'π·r²',v:PI*r*r,pi:true},
+      yanal:{f:'π·r·l',v:PI*r*l,pi:true,note:`l=${fmt(l)}`},
+      yuzey:{f:'πr²+πrl',v:PI*r*r+PI*r*l,pi:true},
+      hacim:{f:'(1/3)·π·r²·h',v:PI*r*r*h/3,pi:true}};},
     steps:(p)=>{const{r,h}=p; const l=Math.sqrt(r*r+h*h); return[
       {lbl:'Eğik yükseklik l',expr:`√(r²+h²) = √(${fmt(r)}²+${fmt(h)}²)`,val:`= ${fmt(l)} birim`},
-      {lbl:'Taban alanı',expr:`πr² = π·${fmt(r)}²`,val:`= ${fmt(PI*r*r)} birim²`},
-      {lbl:'Yanal alan',expr:`π·r·l = π·${fmt(r)}·${fmt(l)}`,val:`= ${fmt(PI*r*l)} birim²`},
-      {lbl:'Toplam yüzey',expr:`πr²+πrl`,val:`= ${fmt(PI*r*r+PI*r*l)} birim²`},
-      {lbl:'Hacim',expr:`(1/3)·π·r²·h`,val:`= ${fmt(PI*r*r*h/3)} birim³`}];}
+      {lbl:'Taban alanı',expr:`πr² = π·${fmt(r)}²`,val:`= ${fmtPi(PI*r*r)} birim²`},
+      {lbl:'Yanal alan',expr:`π·r·l = π·${fmt(r)}·${fmt(l)}`,val:`= ${fmtPi(PI*r*l)} birim²`},
+      {lbl:'Toplam yüzey',expr:`πr²+πrl`,val:`= ${fmtPi(PI*r*r+PI*r*l)} birim²`},
+      {lbl:'Hacim',expr:`(1/3)·π·r²·h`,val:`= ${fmtPi(PI*r*r*h/3)} birim³`}];}
   },
 
   /* ---- Kare Piramit ---- */
@@ -397,14 +409,14 @@ const SHAPES={
     legend:[['Yüzey',COLORS.lateral]],
     build:(p)=>sphereBuild(p.r),
     calc:(p)=>{const{r}=p; return{
-      taban:{f:'π·r²',v:PI*r*r,note:'Büyük daire'},
-      yanal:{f:'4·π·r²',v:4*PI*r*r},
-      yuzey:{f:'4·π·r²',v:4*PI*r*r},
-      hacim:{f:'(4/3)·π·r³',v:4/3*PI*r*r*r}};},
+      taban:{f:'π·r²',v:PI*r*r,pi:true,note:'Büyük daire'},
+      yanal:{f:'4·π·r²',v:4*PI*r*r,pi:true},
+      yuzey:{f:'4·π·r²',v:4*PI*r*r,pi:true},
+      hacim:{f:'(4/3)·π·r³',v:4/3*PI*r*r*r,pi:true}};},
     steps:(p)=>{const{r}=p; return[
-      {lbl:'Büyük daire alanı',expr:`πr² = π·${fmt(r)}²`,val:`= ${fmt(PI*r*r)} birim²`},
-      {lbl:'Toplam yüzey',expr:`4πr² = 4·π·${fmt(r)}²`,val:`= ${fmt(4*PI*r*r)} birim²`},
-      {lbl:'Hacim',expr:`(4/3)πr³ = (4/3)·π·${fmt(r)}³`,val:`= ${fmt(4/3*PI*r*r*r)} birim³`}];}
+      {lbl:'Büyük daire alanı',expr:`πr² = π·${fmt(r)}²`,val:`= ${fmtPi(PI*r*r)} birim²`},
+      {lbl:'Toplam yüzey',expr:`4πr² = 4·π·${fmt(r)}²`,val:`= ${fmtPi(4*PI*r*r)} birim²`},
+      {lbl:'Hacim',expr:`(4/3)πr³ = (4/3)·π·${fmt(r)}³`,val:`= ${fmtPi(4/3*PI*r*r*r)} birim³`}];}
   },
 
   /* ---- Kesik Koni (Koni Kesiti / Frustum) ---- */
@@ -414,17 +426,17 @@ const SHAPES={
     legend:[['Alt taban',COLORS.base],['Üst taban',COLORS.top],['Yanal',COLORS.lateral]],
     build:(p)=>frustumBuild(p.R,p.r,p.h),
     calc:(p)=>{const{R,r,h}=p; const l=Math.sqrt(h*h+(R-r)**2); return{
-      taban:{f:'π·R²',v:PI*R*R},
-      yanal:{f:'π·(R+r)·l',v:PI*(R+r)*l,note:`l=${fmt(l)}`},
-      yuzey:{f:'π(R²+r²+(R+r)l)',v:PI*(R*R+r*r+(R+r)*l)},
-      hacim:{f:'(π·h/3)(R²+Rr+r²)',v:PI*h/3*(R*R+R*r+r*r)}};},
+      taban:{f:'π·R²',v:PI*R*R,pi:true},
+      yanal:{f:'π·(R+r)·l',v:PI*(R+r)*l,pi:true,note:`l=${fmt(l)}`},
+      yuzey:{f:'π(R²+r²+(R+r)l)',v:PI*(R*R+r*r+(R+r)*l),pi:true},
+      hacim:{f:'(π·h/3)(R²+Rr+r²)',v:PI*h/3*(R*R+R*r+r*r),pi:true}};},
     steps:(p)=>{const{R,r,h}=p; const l=Math.sqrt(h*h+(R-r)**2); return[
       {lbl:'Eğik yükseklik l',expr:`√(h²+(R-r)²)`,val:`= ${fmt(l)} birim`},
-      {lbl:'Alt taban alanı',expr:`πR² = π·${fmt(R)}²`,val:`= ${fmt(PI*R*R)} birim²`},
-      {lbl:'Üst taban alanı',expr:`πr² = π·${fmt(r)}²`,val:`= ${fmt(PI*r*r)} birim²`},
-      {lbl:'Yanal alan',expr:`π(R+r)·l`,val:`= ${fmt(PI*(R+r)*l)} birim²`},
-      {lbl:'Toplam yüzey',expr:`π(R²+r²+(R+r)l)`,val:`= ${fmt(PI*(R*R+r*r+(R+r)*l))} birim²`},
-      {lbl:'Hacim',expr:`(πh/3)(R²+Rr+r²)`,val:`= ${fmt(PI*h/3*(R*R+R*r+r*r))} birim³`}];}
+      {lbl:'Alt taban alanı',expr:`πR² = π·${fmt(R)}²`,val:`= ${fmtPi(PI*R*R)} birim²`},
+      {lbl:'Üst taban alanı',expr:`πr² = π·${fmt(r)}²`,val:`= ${fmtPi(PI*r*r)} birim²`},
+      {lbl:'Yanal alan',expr:`π(R+r)·l`,val:`= ${fmtPi(PI*(R+r)*l)} birim²`},
+      {lbl:'Toplam yüzey',expr:`π(R²+r²+(R+r)l)`,val:`= ${fmtPi(PI*(R*R+r*r+(R+r)*l))} birim²`},
+      {lbl:'Hacim',expr:`(πh/3)(R²+Rr+r²)`,val:`= ${fmtPi(PI*h/3*(R*R+R*r+r*r))} birim³`}];}
   }
 };
 
@@ -792,9 +804,10 @@ function updateResults(){
   ['taban','yanal','yuzey','hacim'].forEach(k=>{
     if(!c[k])return;
     const d=document.createElement('div'); d.className='res-card';
+    const dv=c[k].pi ? fmtPi(c[k].v) : c[k].v.toFixed(2);
     d.innerHTML=`<div class="name"><span>${labels[k]}</span>${c[k].note?`<span style="color:var(--accent2);font-size:11px">${c[k].note}</span>`:''}</div>
       <div class="formula">${c[k].f}</div>
-      <div class="val">${c[k].v.toFixed(2)} <small>${units[k]}</small></div>`;
+      <div class="val">${dv} <small>${units[k]}</small></div>`;
     wrap.appendChild(d);
   });
 }
